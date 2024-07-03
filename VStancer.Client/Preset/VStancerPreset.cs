@@ -6,6 +6,23 @@ namespace VStancer.Client.Preset
     {
         public WheelPreset WheelPreset { get; set; }
         public WheelModPreset WheelModPreset { get; set; }
+        public string SavedPlate { get; set; }
+    }
+
+    public class SavedPlate
+    {
+        public string Plate { get; set; }
+
+        public SavedPlate()
+        {
+
+        }
+
+        public SavedPlate(string plate)
+        {
+            Plate = plate;
+        }
+        public string[] ToArray() { return new string[] { Plate }; }
     }
 
     public class WheelPreset

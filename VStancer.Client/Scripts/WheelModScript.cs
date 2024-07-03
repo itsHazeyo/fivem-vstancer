@@ -48,7 +48,7 @@ namespace VStancer.Client.Scripts
             }
         }
 
-        internal VStancerConfig Config => _mainScript.Config;
+        internal Config Config => _mainScript.Config;
         internal WheelModMenu Menu { get; private set; }
         public bool DataIsValid => _playerVehicleHandle != -1 && WheelModData != null && VehicleWheelMod != -1;
 
@@ -229,7 +229,7 @@ namespace VStancer.Client.Scripts
                 return null;
 
             int wheelsCount = GetVehicleNumberOfWheels(vehicle);
-            int frontCount = VStancerUtilities.CalculateFrontWheelsCount(wheelsCount);
+            int frontCount = Utilities.CalculateFrontWheelsCount(wheelsCount);
 
             float wheelWidth_def;
             float wheelSize_def;
@@ -244,6 +244,9 @@ namespace VStancer.Client.Scripts
             {
                 do
                 {
+                    if (!DoesEntityExist(vehicle))
+                        return null;
+
                     wheelWidth_def = GetVehicleWheelWidth(vehicle);
                     await Delay(100);
                 } while (MathUtil.IsZero(wheelWidth_def) || MathUtil.IsOne(wheelWidth_def));
@@ -257,6 +260,9 @@ namespace VStancer.Client.Scripts
             {
                 do
                 {
+                    if (!DoesEntityExist(vehicle))
+                        return null;
+
                     wheelSize_def = GetVehicleWheelSize(vehicle);
                     await Delay(100);
                 } while (MathUtil.IsZero(wheelSize_def) || MathUtil.IsOne(wheelSize_def));
@@ -292,27 +298,21 @@ namespace VStancer.Client.Scripts
         private void SetWheelWidthUsingData(int vehicle, WheelModData data)
         {
             float value = data.WheelWidth;
+            float defValue = data.DefaultWheelWidth;
 
-            bool result = SetVehicleWheelWidth(vehicle, value);
-            if (result)
-            {
-                float defValue = data.DefaultWheelWidth;
-                VStancerUtilities.UpdateFloatDecorator(vehicle, DefaultWidthID, defValue, value);
-                VStancerUtilities.UpdateFloatDecorator(vehicle, WheelWidthID, value, defValue);
-            }
+            SetVehicleWheelWidth(vehicle, value);
+            Utilities.UpdateFloatDecorator(vehicle, DefaultWidthID, defValue, value);
+            Utilities.UpdateFloatDecorator(vehicle, WheelWidthID, value, defValue);
         }
 
         private void SetWheelSizeUsingData(int vehicle, WheelModData data)
         {
             float value = data.WheelSize;
+            float defValue = data.DefaultWheelSize;
 
-            bool result = SetVehicleWheelSize(vehicle, value);
-            if (result)
-            {
-                float defValue = data.DefaultWheelSize;
-                VStancerUtilities.UpdateFloatDecorator(vehicle, DefaultSizeID, defValue, value);
-                VStancerUtilities.UpdateFloatDecorator(vehicle, WheelSizeID, value, defValue);
-            }
+            SetVehicleWheelSize(vehicle, value);
+            Utilities.UpdateFloatDecorator(vehicle, DefaultSizeID, defValue, value);
+            Utilities.UpdateFloatDecorator(vehicle, WheelSizeID, value, defValue);
         }
 
         private void SetFrontTireColliderWidthUsingData(int vehicle, WheelModData data)
@@ -323,8 +323,8 @@ namespace VStancer.Client.Scripts
             for (int i = 0; i < WheelModData.FrontWheelsCount; i++)
                 SetVehicleWheelTireColliderWidth(vehicle, i, value);
 
-            VStancerUtilities.UpdateFloatDecorator(vehicle, DefaultFrontTireColliderWidthID, defValue, value);
-            VStancerUtilities.UpdateFloatDecorator(vehicle, FrontTireColliderWidthID, value, defValue);
+            Utilities.UpdateFloatDecorator(vehicle, DefaultFrontTireColliderWidthID, defValue, value);
+            Utilities.UpdateFloatDecorator(vehicle, FrontTireColliderWidthID, value, defValue);
         }
 
         private void SetFrontTireColliderSizeUsingData(int vehicle, WheelModData data)
@@ -335,8 +335,8 @@ namespace VStancer.Client.Scripts
             for (int i = 0; i < WheelModData.FrontWheelsCount; i++)
                 SetVehicleWheelTireColliderSize(vehicle, i, value);
 
-            VStancerUtilities.UpdateFloatDecorator(vehicle, DefaultFrontTireColliderSizeID, defValue, value);
-            VStancerUtilities.UpdateFloatDecorator(vehicle, FrontTireColliderSizeID, value, defValue);
+            Utilities.UpdateFloatDecorator(vehicle, DefaultFrontTireColliderSizeID, defValue, value);
+            Utilities.UpdateFloatDecorator(vehicle, FrontTireColliderSizeID, value, defValue);
         }
 
         private void SetFrontRimColliderSizeUsingData(int vehicle, WheelModData data)
@@ -347,8 +347,8 @@ namespace VStancer.Client.Scripts
             for (int i = 0; i < WheelModData.FrontWheelsCount; i++)
                 SetVehicleWheelRimColliderSize(vehicle, i, value);
 
-            VStancerUtilities.UpdateFloatDecorator(vehicle, DefaultFrontRimColliderSizeID, defValue, value);
-            VStancerUtilities.UpdateFloatDecorator(vehicle, FrontRimColliderSizeID, value, defValue);
+            Utilities.UpdateFloatDecorator(vehicle, DefaultFrontRimColliderSizeID, defValue, value);
+            Utilities.UpdateFloatDecorator(vehicle, FrontRimColliderSizeID, value, defValue);
         }
 
         private void SetRearTireColliderWidthUsingData(int vehicle, WheelModData data)
@@ -359,8 +359,8 @@ namespace VStancer.Client.Scripts
             for (int i = WheelModData.FrontWheelsCount; i < WheelModData.WheelsCount; i++)
                 SetVehicleWheelTireColliderWidth(vehicle, i, value);
 
-            VStancerUtilities.UpdateFloatDecorator(vehicle, DefaultRearTireColliderWidthID, defValue, value);
-            VStancerUtilities.UpdateFloatDecorator(vehicle, RearTireColliderWidthID, value, defValue);
+            Utilities.UpdateFloatDecorator(vehicle, DefaultRearTireColliderWidthID, defValue, value);
+            Utilities.UpdateFloatDecorator(vehicle, RearTireColliderWidthID, value, defValue);
         }
 
         private void SetRearTireColliderSizeUsingData(int vehicle, WheelModData data)
@@ -371,8 +371,8 @@ namespace VStancer.Client.Scripts
             for (int i = WheelModData.FrontWheelsCount; i < WheelModData.WheelsCount; i++)
                 SetVehicleWheelTireColliderSize(vehicle, i, value);
 
-            VStancerUtilities.UpdateFloatDecorator(vehicle, DefaultRearTireColliderSizeID, defValue, value);
-            VStancerUtilities.UpdateFloatDecorator(vehicle, RearTireColliderSizeID, value, defValue);
+            Utilities.UpdateFloatDecorator(vehicle, DefaultRearTireColliderSizeID, defValue, value);
+            Utilities.UpdateFloatDecorator(vehicle, RearTireColliderSizeID, value, defValue);
         }
 
         private void SetRearRimColliderSizeUsingData(int vehicle, WheelModData data)
@@ -383,8 +383,8 @@ namespace VStancer.Client.Scripts
             for (int i = WheelModData.FrontWheelsCount; i < WheelModData.WheelsCount; i++)
                 SetVehicleWheelRimColliderSize(vehicle, i, value);
 
-            VStancerUtilities.UpdateFloatDecorator(vehicle, DefaultRearRimColliderSizeID, defValue, value);
-            VStancerUtilities.UpdateFloatDecorator(vehicle, RearRimColliderSizeID, value, defValue);
+            Utilities.UpdateFloatDecorator(vehicle, DefaultRearRimColliderSizeID, defValue, value);
+            Utilities.UpdateFloatDecorator(vehicle, RearRimColliderSizeID, value, defValue);
         }
 
         private void OnWheelModDataPropertyChanged(string propertyName, float value)
@@ -422,15 +422,15 @@ namespace VStancer.Client.Scripts
                 case nameof(WheelModData.Reset):
 
                     // TODO: Avoid updating decorators if we have to remove them anyway
-                    SetWheelWidthUsingData(_playerVehicleHandle, WheelModData);
-                    SetWheelSizeUsingData(_playerVehicleHandle, WheelModData);
-                    SetFrontTireColliderWidthUsingData(_playerVehicleHandle, WheelModData);
-                    SetFrontTireColliderSizeUsingData(_playerVehicleHandle, WheelModData);
-                    SetFrontRimColliderSizeUsingData(_playerVehicleHandle, WheelModData);
-                    SetRearTireColliderWidthUsingData(_playerVehicleHandle, WheelModData);
-                    SetRearTireColliderSizeUsingData(_playerVehicleHandle, WheelModData);
-                    SetRearRimColliderSizeUsingData(_playerVehicleHandle, WheelModData);
-
+                    //SetWheelWidthUsingData(_playerVehicleHandle, WheelModData);
+                    //SetWheelSizeUsingData(_playerVehicleHandle, WheelModData);
+                    //SetFrontTireColliderWidthUsingData(_playerVehicleHandle, WheelModData);
+                    //SetFrontTireColliderSizeUsingData(_playerVehicleHandle, WheelModData);
+                    //SetFrontRimColliderSizeUsingData(_playerVehicleHandle, WheelModData);
+                    //SetRearTireColliderWidthUsingData(_playerVehicleHandle, WheelModData);
+                    //SetRearTireColliderSizeUsingData(_playerVehicleHandle, WheelModData);
+                    //SetRearRimColliderSizeUsingData(_playerVehicleHandle, WheelModData);
+                    UpdateVehicleUsingData(_playerVehicleHandle, WheelModData);
                     RemoveDecoratorsFromVehicle(_playerVehicleHandle);
 
                     WheelModDataChanged?.Invoke(this, EventArgs.Empty);
@@ -444,7 +444,7 @@ namespace VStancer.Client.Scripts
         private void UpdateVehicleUsingDecorators(int vehicle)
         {
             int wheelsCount = GetVehicleNumberOfWheels(vehicle);
-            int frontWheelsCount = VStancerUtilities.CalculateFrontWheelsCount(wheelsCount);
+            int frontWheelsCount = Utilities.CalculateFrontWheelsCount(wheelsCount);
 
             if (DecorExistOn(vehicle, WheelSizeID))
                 SetVehicleWheelSize(vehicle, DecorGetFloat(vehicle, WheelSizeID));
@@ -658,7 +658,7 @@ namespace VStancer.Client.Scripts
             Debug.WriteLine($"{nameof(WheelModScript)}: Vehicles with decorators: {entities.Count()}");
 
             foreach (int item in entities)
-                Debug.WriteLine($"Vehicle: {item}");
+                Debug.WriteLine($"Vehicle: {item}, netID: {NetworkGetNetworkIdFromEntity(item)}");
         }
 
         internal void PrintDecoratorsInfo(int vehicle)
@@ -726,22 +726,30 @@ namespace VStancer.Client.Scripts
             Debug.WriteLine(s.ToString());
         }
 
-        internal WheelModPreset GetWheelModPreset()
+        internal WheelModPreset GetWheelModPreset(bool allowStockPreset = false)
         {
             if (!DataIsValid)
                 return null;
 
             // Only required to avoid saving this preset locally when not required
-            if (!WheelModData.IsEdited)
+            if (!WheelModData.IsEdited && !allowStockPreset)
                 return null;
 
             return new WheelModPreset(WheelModData);
         }
 
-        internal async Task SetWheelModPreset(WheelModPreset preset)
+        internal async Task SetWheelModPreset(WheelModPreset preset, bool ignoreEmptyPresets = true)
         {
-            if (!DataIsValid || preset == null)
+            if (!DataIsValid)
                 return;
+
+            if(preset == null)
+            {
+                if (!ignoreEmptyPresets)
+                    WheelModData.Reset();
+
+                return;
+            }
 
             // TODO: Check if values are within limits
 

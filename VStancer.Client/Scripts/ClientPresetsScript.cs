@@ -7,11 +7,27 @@ using VStancer.Client.Preset;
 using System.Collections.Generic;
 using CitizenFX.Core;
 using static CitizenFX.Core.Native.API;
+using System.Linq;
 
 namespace VStancer.Client.Scripts
 {
     internal class ClientPresetsScript
     {
+        internal VStancerPreset GetPresetDetails(string presetKey)
+        {
+            // Assuming Presets is an instance of a class that implements IPresetsCollection
+            // and it has a method to get a preset by key.
+            var preset = Presets.GetPreset(presetKey);
+            if (preset != null)
+            {
+                return preset;
+            }
+            else
+            {
+                // Handle the case where the preset is not found. This could be returning null or throwing an exception.
+                return null; // Or throw new KeyNotFoundException($"Preset with key {presetKey} not found.");
+            }
+        }
         private readonly MainScript _mainScript;
 
         internal IPresetsCollection<string, VStancerPreset> Presets { get; private set; }
@@ -20,7 +36,10 @@ namespace VStancer.Client.Scripts
         public ClientPresetsScript(MainScript mainScript)
         {
             _mainScript = mainScript;
-            Presets = new KvpPresetsCollection(Globals.KvpPrefix);
+
+            MigrateLegacyPresets("vstancer_", "vstancer_client_preset_");
+
+            Presets = new KvpPresetsCollection("vstancer_client_preset_");
 
             if (!_mainScript.Config.DisableMenu)
             {
@@ -29,6 +48,31 @@ namespace VStancer.Client.Scripts
                 Menu.DeletePresetEvent += (sender, presetID) => OnDeletePresetInvoked(presetID);
                 Menu.SavePresetEvent += (sender, presetID) => OnSavePresetInvoked(presetID);
                 Menu.ApplyPresetEvent += (sender, presetID) => OnApplyPresetInvoked(presetID);
+            }
+        }
+
+        private void MigrateLegacyPresets(string oldPrefix, string newPrefix)
+        {
+            var oldKeys = Utilities.GetKeyValuePairs(oldPrefix)
+                .Except(Utilities.GetKeyValuePairs(newPrefix))
+                .Except(new List<string>() { ClientSettingsScript.ClientSettingsID });
+
+            foreach (var oldKey in oldKeys)
+            {
+                string value = GetResourceKvpString(oldKey);
+
+                if (string.IsNullOrEmpty(value))
+                    continue;
+
+                var keyWithoutPrefix = oldKey.Remove(0, oldPrefix.Length);
+                var newKey = $"{newPrefix}{keyWithoutPrefix}";
+
+                if (string.IsNullOrEmpty(GetResourceKvpString(newKey)))
+                {
+                    SetResourceKvp(newKey, value);
+                    Debug.WriteLine($"{nameof(ClientPresetsScript)}: Migrated preset: {oldKey} -> {newKey}");
+                }
+
             }
         }
 
@@ -47,8 +91,15 @@ namespace VStancer.Client.Scripts
 
         private void OnSavePresetInvoked(string presetKey)
         {
-            var wheelPreset = _mainScript.WheelScript?.GetWheelPreset();
-            var wheelModPreset = _mainScript.WheelModScript?.GetWheelModPreset();
+            bool allowStockPreset = false;
+
+            if (_mainScript.ClientSettingsScript?.ClientSettings != null)
+                allowStockPreset = _mainScript.ClientSettingsScript.ClientSettings.AllowStockPresets;
+
+            var wheelPreset = _mainScript.WheelScript?.GetWheelPreset(allowStockPreset);
+            var wheelModPreset = _mainScript.WheelModScript?.GetWheelModPreset(allowStockPreset);
+            var veh = GetVehiclePedIsIn(PlayerPedId(), false);
+            string vehPlate = GetVehicleNumberPlateText(veh);
             
             if(wheelPreset == null && wheelModPreset == null)
             {
@@ -66,6 +117,7 @@ namespace VStancer.Client.Scripts
             {
                 WheelPreset = wheelPreset,
                 WheelModPreset = wheelModPreset,
+                SavedPlate = vehPlate
             };
 
             if (Presets.Save(presetKey, preset))
@@ -88,8 +140,13 @@ namespace VStancer.Client.Scripts
                 return;
             }
 
-            await _mainScript.WheelScript.SetWheelPreset(loadedPreset.WheelPreset);
-            await _mainScript.WheelModScript.SetWheelModPreset(loadedPreset.WheelModPreset);
+            bool ignoreEmptyPresets = false;
+            
+            if (_mainScript.ClientSettingsScript?.ClientSettings != null)
+                ignoreEmptyPresets = _mainScript.ClientSettingsScript.ClientSettings.IgnoreEmptyPresets;
+
+            await _mainScript.WheelScript.SetWheelPreset(loadedPreset.WheelPreset, ignoreEmptyPresets);
+            await _mainScript.WheelModScript.SetWheelModPreset(loadedPreset.WheelModPreset, ignoreEmptyPresets);
 
             Screen.ShowNotification($"Client preset ~b~{presetKey}~w~ applied");
         }
@@ -109,9 +166,11 @@ namespace VStancer.Client.Scripts
 
             if(wheelPreset != null)
             {
+                string vehPlate = GetVehicleNumberPlateText(vehicle);
                 VStancerPreset preset = new VStancerPreset
                 {
-                    WheelPreset = wheelPreset
+                    WheelPreset = wheelPreset,
+                    SavedPlate = vehPlate
                 };
 
                 return Presets.Save(presetKey, preset);

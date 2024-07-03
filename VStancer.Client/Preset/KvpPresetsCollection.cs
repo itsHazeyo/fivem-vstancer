@@ -20,6 +20,14 @@ namespace VStancer.Client.Preset
         {
             mKvpPrefix = prefix;
         }
+        public VStancerPreset GetPreset(string presetKey)
+        {
+            if (Load(presetKey, out VStancerPreset preset))
+            {
+                return preset;
+            }
+            return null; // Or throw an exception if the preset is not found
+        }
 
         public bool Delete(string name)
         {
@@ -93,7 +101,7 @@ namespace VStancer.Client.Preset
 
         public IEnumerable<string> GetKeys()
         {
-            return VStancerUtilities.GetKeyValuePairs(mKvpPrefix).Select(key => key.Remove(0, mKvpPrefix.Length));
+            return Utilities.GetKeyValuePairs(mKvpPrefix).Select(key => key.Remove(0, mKvpPrefix.Length));
         }
     }
 }

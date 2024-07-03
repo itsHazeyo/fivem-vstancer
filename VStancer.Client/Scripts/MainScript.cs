@@ -54,10 +54,11 @@ namespace VStancer.Client.Scripts
 
         internal event EventHandler ToggleMenuVisibility;
 
-        internal VStancerConfig Config { get; private set; }
+        internal Config Config { get; private set; }
         internal WheelScript WheelScript { get; private set; }
         internal WheelModScript WheelModScript { get; private set; }
         internal ClientPresetsScript ClientPresetsScript { get; private set; }
+        internal ClientSettingsScript ClientSettingsScript { get; private set; }
 
         public MainScript()
         {
@@ -72,10 +73,10 @@ namespace VStancer.Client.Scripts
             _playerPedHandle = -1;
             _playerPedCoords = Vector3.Zero;
             _worldVehiclesHandles = new List<int>();
-            _maxDistanceSquared = 10;
+            _maxDistanceSquared = 10000;
 
             Config = LoadConfig();
-            _maxDistanceSquared = (float)Math.Sqrt(Config.ScriptRange);
+            _maxDistanceSquared = (float)Math.Pow(Config.ScriptRange, 2.0);
             WheelScript = new WheelScript(this);
             RegisterScript(WheelScript);
 
@@ -90,12 +91,14 @@ namespace VStancer.Client.Scripts
                 ClientPresetsScript = new ClientPresetsScript(this);
             }
 
+            ClientSettingsScript = new ClientSettingsScript(this);
+
             if (!Config.DisableMenu)
                 Menu = new MainMenu(this);
 
             Tick += GetPlayerAndVehicleTask;
             Tick += TimedTask;
-            Tick += HideUITask;
+            Tick += UpdateMenuTask;
 
             RegisterCommands();
 
@@ -119,12 +122,15 @@ namespace VStancer.Client.Scripts
             Exports.Add("GetClientPresetList", new Func<string[]>(GetClientPresetList));
         }
 
-        private async Task HideUITask()
+        private async Task UpdateMenuTask()
         {
-            if (Menu != null)
-                Menu.HideMenu = _playerVehicleHandle == -1;
-
             await Task.FromResult(0);
+            
+            if (Menu == null)
+                return;
+
+            Menu.LeftAlignment = ClientSettingsScript.ClientSettings.MenuLeftAlignment;
+            Menu.HideMenu = _playerVehicleHandle == -1;
         }
 
         internal List<int> GetCloseVehicleHandles()
@@ -153,7 +159,7 @@ namespace VStancer.Client.Scripts
             {
                 _playerPedCoords = GetEntityCoords(_playerPedHandle, true);
 
-                _worldVehiclesHandles = VStancerUtilities.GetWorldVehicles();
+                _worldVehiclesHandles = Utilities.GetWorldVehicles();
 
                 _lastTime = GetGameTimer();
             }
@@ -174,6 +180,7 @@ namespace VStancer.Client.Scripts
             }
 
             int vehicle = GetVehiclePedIsIn(_playerPedHandle, false);
+            string currentPlate = GetVehicleNumberPlateText(vehicle);
 
             // If this model isn't a car, or player isn't the driver, or vehicle is not driveable
             if (!IsThisModelACar((uint)GetEntityModel(vehicle)) || GetPedInVehicleSeat(vehicle, -1) != _playerPedHandle || !IsVehicleDriveable(vehicle, false))
@@ -183,16 +190,30 @@ namespace VStancer.Client.Scripts
             }
 
             PlayerVehicleHandle = vehicle;
+
+            foreach (var presetKey in ClientPresetsScript.API_GetClientPresetList())
+            {
+                // Assuming GetPresetDetails is a method that retrieves the details of a preset by its key
+                // This is a hypothetical method, you'll need to implement it based on your application's structure
+                var presetDetails = ClientPresetsScript.GetPresetDetails(presetKey);
+                if (presetDetails != null && presetDetails.SavedPlate == currentPlate)
+                {
+                    ClientPresetsScript.API_LoadPreset(presetKey, vehicle);
+                    break; // Preset found and applied, no need to check further
+                }
+            }
+            
+
         }
 
-        private VStancerConfig LoadConfig(string filename = "config.json")
+        private Config LoadConfig(string filename = "config.json")
         {
-            VStancerConfig config;
+            Config config;
 
             try
             {
                 string strings = LoadResourceFile(Globals.ResourceName, filename);
-                config = JsonConvert.DeserializeObject<VStancerConfig>(strings);
+                config = JsonConvert.DeserializeObject<Config>(strings);
 
                 Debug.WriteLine($"{nameof(MainScript)}: Loaded config from {filename}");
             }
@@ -201,7 +222,7 @@ namespace VStancer.Client.Scripts
                 Debug.WriteLine($"{nameof(MainScript)}: Impossible to load {filename}", e.Message);
                 Debug.WriteLine(e.StackTrace);
 
-                config = new VStancerConfig();
+                config = new Config();
             }
 
             return config;
@@ -246,7 +267,7 @@ namespace VStancer.Client.Scripts
                 if (float.TryParse(args[0], out float value))
                 {
                     Config.ScriptRange = value;
-                    _maxDistanceSquared = (float)Math.Sqrt(value);
+                    _maxDistanceSquared = (float)Math.Pow(Config.ScriptRange, 2.0);
                     Debug.WriteLine($"{nameof(MainScript)}: {nameof(Config.ScriptRange)} updated to {value}");
                 }
                 else Debug.WriteLine($"{nameof(MainScript)}: Error parsing {args[0]} as float");
@@ -291,7 +312,7 @@ namespace VStancer.Client.Scripts
                     WheelModScript.PrintVehiclesWithDecorators(_worldVehiclesHandles);
             }), false);
 
-            if(!Config.DisableMenu)
+            if (!Config.DisableMenu)
             {
                 if (Config.ExposeCommand)
                     RegisterCommand("vstancer", new Action<int, dynamic>((source, args) => { ToggleMenuVisibility?.Invoke(this, EventArgs.Empty); }), false);
@@ -300,7 +321,6 @@ namespace VStancer.Client.Scripts
                     EventHandlers.Add("vstancer:toggleMenu", new Action(() => { ToggleMenuVisibility?.Invoke(this, EventArgs.Empty); }));
             }
         }
-
         public float[] GetWheelPreset(int vehicle)
         {
             if (WheelScript == null)
@@ -320,7 +340,7 @@ namespace VStancer.Client.Scripts
             WheelPreset preset = new WheelPreset(frontTrackWidth, frontCamber, rearTrackWidth, rearCamber);
             return WheelScript.API_SetWheelPreset(vehicle, preset);
         }
-        
+
         public bool ResetWheelPreset(int vehicle)
         {
             if (WheelScript == null)

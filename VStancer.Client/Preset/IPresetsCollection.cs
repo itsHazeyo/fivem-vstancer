@@ -5,6 +5,7 @@ namespace VStancer.Client.Preset
 {
     public interface IPresetsCollection<TKey, TValue>
     {
+        TValue GetPreset(TKey presetKey);
         /// <summary>
         /// Invoked when an element is saved or deleted
         /// </summary>
